@@ -7,15 +7,16 @@ import math
 
 class ArmPositions(Enum):
     Up = 1
-    Down = 2
-    Flip = 3
+    Settle = 2
+    Down = 3
+    Flip = 4
 
 armMotor = LargeMotor(OUTPUT_A)
-armMotorSpeed = 25
+armMotorSpeed = 22
 
 tableMotor = LargeMotor(OUTPUT_B)
 tableMotorSpeed = 35
-tableMotorOvershoot = 20
+tableMotorOvershoot = 40
 
 scannerMotor = MediumMotor(OUTPUT_C)
 scannerMotorSpeed = 50
@@ -30,18 +31,33 @@ def turnTable(turns):
 def moveArm(position):
     #print(".... Moving arm", end="\r")
     if position == ArmPositions.Up:
-        armMotor.on_to_position(armMotorSpeed, 0)
+        on_to_position_timeout(armMotor, armMotorSpeed, 0)
     elif position == ArmPositions.Down:
-        armMotor.on_to_position(armMotorSpeed, 100)
+        on_to_position_timeout(armMotor, armMotorSpeed, 100)
+    elif position == ArmPositions.Settle:
+        on_to_position_timeout(armMotor, armMotorSpeed, 85)
     elif position == ArmPositions.Flip:
-        armMotor.on_to_position(armMotorSpeed, 195)
+        on_to_position_timeout(armMotor, armMotorSpeed, 180)
     #print("Done")
     #print()
+    sleep(.2)
+
+def on_to_position_timeout(motor, speed, position, brake=True, block=True, timeout=1000):
+    speed = motor._speed_native_units(speed)
+    motor.speed_sp = int(round(speed))
+    motor.position_sp = position
+    motor._set_brake(brake)
+    motor.run_to_abs_pos()
+
+    if block:
+        motor.wait_until('running', timeout=100)
+        motor.wait_until_not_moving(timeout=timeout)
 
 def flipCube(times=1):
     for _ in range(times):
         moveArm(ArmPositions.Flip)
-        moveArm(ArmPositions.Down)
+        moveArm(ArmPositions.Settle)
+    moveArm(ArmPositions.Down)
 
 def rotateCube(times):
     moveArm(ArmPositions.Up)
@@ -51,7 +67,7 @@ def initMotors():
     print("Initializing Arm...")
     armMotor.stop_action = "brake"
     armMotor.on_for_seconds(-armMotorSpeed, 3)
-    armMotor.position = 0
+    armMotor.position = -10
     armMotor.position_sp = 0
     moveArm(ArmPositions.Up)
 
