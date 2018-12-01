@@ -1,8 +1,10 @@
 #!/usr/bin/python3
 from ev3dev2.motor import LargeMotor, MediumMotor, OUTPUT_A, OUTPUT_B, OUTPUT_C, SpeedPercent, MoveTank
+from ev3dev2.led import Leds
 from enum import Enum
 from time import sleep
 
+import threading
 import math
 
 class ArmPositions(Enum):
@@ -12,24 +14,24 @@ class ArmPositions(Enum):
     Flip = 4
 
 armMotor = LargeMotor(OUTPUT_A)
-armMotorSpeed = 22
+armMotorSpeed = 25
 
 tableMotor = LargeMotor(OUTPUT_B)
-tableMotorSpeed = 35
+tableMotorSpeed = 50
 tableMotorOvershoot = 40
 
 scannerMotor = MediumMotor(OUTPUT_C)
 scannerMotorSpeed = 50
+
+leds = Leds()
 
 def turnTable(turns):
     overshoot = math.copysign(tableMotorOvershoot, turns)
     degrees = 270 * turns
     tableMotor.on_for_degrees(tableMotorSpeed, degrees + overshoot)
     tableMotor.on_for_degrees(tableMotorSpeed, -overshoot)
-    sleep(.25)
 
 def moveArm(position):
-    #print(".... Moving arm", end="\r")
     if position == ArmPositions.Up:
         on_to_position_timeout(armMotor, armMotorSpeed, 0)
     elif position == ArmPositions.Down:
@@ -38,11 +40,9 @@ def moveArm(position):
         on_to_position_timeout(armMotor, armMotorSpeed, 85)
     elif position == ArmPositions.Flip:
         on_to_position_timeout(armMotor, armMotorSpeed, 180)
-    #print("Done")
-    #print()
-    sleep(.2)
 
 def on_to_position_timeout(motor, speed, position, brake=True, block=True, timeout=1000):
+    # TODO why is the timeout necessary?
     speed = motor._speed_native_units(speed)
     motor.speed_sp = int(round(speed))
     motor.position_sp = position
@@ -111,10 +111,26 @@ def main():
     tableMotor.on_for_rotations(50, 3)
     sleep(1)
 
-    shutdownMotors()
+doLights = True
+
+def coolLightThing():
+    i = 0
+    while(doLights):
+        i += .1
+        color1 = (max(0, math.sin(i+.5)), max(0, math.cos(i+.5)))
+        color2 = (max(0, math.sin(i   )), max(0, math.cos(i   )))
+        leds.set_color('LEFT', color1)
+        leds.set_color('RIGHT', color2)
+        sleep(.02)
+    leds.set_color('LEFT', 'GREEN')
+    leds.set_color('RIGHT', 'GREEN')
 
 if __name__ == "__main__":
     try:
+        lights = threading.Thread(target=coolLightThing)
+        lights.start()
         main()
-    except:
+    finally:
         shutdownMotors()
+        doLights = False
+        lights.join()
