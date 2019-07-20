@@ -21,14 +21,14 @@ def coolLightThing():
     leds.set_color('RIGHT', 'GREEN')
 
 def startLights():
-    global doLights
+    global doLights, lights
     if not doLights:
         doLights = True
         lights = threading.Thread(target=coolLightThing)
         lights.start()
 
 def stopLights():
-    global doLights
+    global doLights, lights
     if doLights:
         doLights = False
         lights.join()
