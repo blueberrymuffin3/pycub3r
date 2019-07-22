@@ -1,1 +1,1 @@
-# Mind Cub3r
+# pycub3r
